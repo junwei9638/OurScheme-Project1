@@ -5,23 +5,32 @@
 using namespace std;
 
 struct  Token {
-  string token = "\0" ;
+  string tokenName = "\0" ;
   int typeNum = 0 ;
+}; // TokenType
+
+
+struct  TokenTree {
+  Token * leftToken ;
+  Token * rightToken ;
+  TokenTree * leftBranch = NULL ;
+  TokenTree * rightBranch = NULL ;
 }; // TokenType
 
 
 enum Type {
   Int, String, Dot, Float, Nil, T, Quote, Symbol, LeftParen, RightParen
-}; // enum
+}; // Type
 
 enum Error {
   LeftError, RightError, CloseError, EofError
-}; // enum
+}; // Error
 
-vector<struct Token> Token;
+vector<struct Token> Tokens;
 
 int gLine = 1 ;
 int gColumn = 0 ;
+bool gIsEnd = false;
 
 class Project1 {
 public:
@@ -143,20 +152,21 @@ public:
       
       if( signBit > 1 ) IsNum = false ;
       
+      atomType = Symbol ;
+      if ( IsNum && !IsSymbol ) atomExp = NumProcess( atomExp );
     } // else
-    
-    atomType = Symbol ;
-    if ( IsNum && !IsSymbol ) atomExp = NumProcess( atomExp );
+
     
     return  atomExp;
-  } // AtomAnalyze
+  } // AtomAnalyze()
   
   string GetAtom( ){
     string atomExp = "\0" ;
     char ch = '\0' ;
     char peek = cin.peek() ;
     while( peek != '\n' && peek != EOF &&
-          peek != ' ' && peek != ';') {
+          peek != ' ' && peek != ';'&&
+          peek != '(' && peek != ')' && peek != '"') {
       ch = cin.get() ;
       gColumn ++ ;
       atomExp = atomExp + ch;
@@ -166,70 +176,152 @@ public:
     atomExp = AtomAnalyze( atomExp );
     
     return atomExp ;
-  } // GetAtom
+  } // GetAtom()
   
-  
-  bool IsAtom(){
-    if( Token.back().typeNum == Symbol || Token.back().typeNum == Int ||
-       Token.back().typeNum == Float || Token.back().typeNum == String ||
-       Token.back().typeNum == Nil || Token.back().typeNum == T  ||
-       Token.back().typeNum == LeftParen || Token.back().typeNum == RightParen )
-      return true ;
-    
-    else return false ;
-  } // IsAtom()
-  
-  bool GetToken(){
-    struct Token exp;
-    char peek = cin.peek() ;
-    
-    if( peek == '\n' ) return false;
-    
+  char GetChar( ){
+    char peek = '\0' ;
+    peek = cin.peek() ;
     while( peek == ' ' || peek == '\t' || peek == '\n' ) {
       cin.get() ;
-      gColumn++ ;
+      gColumn ++ ;
       peek = cin.peek() ;
-    } // while                                                  // white space case
-    
-    if( peek == ';' ) {
-      while( peek != '\n' ){
-        cin.get() ;
-        gColumn ++ ;
-        peek = cin.peek() ;
+      while( peek == ';' ) {
+        while( peek != '\n' ){
+          cin.get() ;
+          gColumn ++ ;
+          peek = cin.peek() ;
+        } // while
       } // while
-    } // else                                                        // comment case
+    } // while
+    
+    return peek ;
+  } // GetChar()
+  
+  bool GetToken(){
+    struct Token token;
+    char peek = GetChar() ;
+    
+    if( peek == '\0' ) {
+      gIsEnd = true ;
+      return false;
+    } // if
     
     else if( peek == '(' ) {
-      exp.token = cin.get() ;
+      token.tokenName = cin.get() ;
       gColumn ++ ;
-      atomType = LeftParen;
-    } // if
+      
+      peek = GetChar() ;
+      
+      if( peek == ')'){
+        token.tokenName = "nil" ;
+        cin.get() ;
+        gColumn ++ ;
+        atomType = Nil ;
+      } // if                                                   // () case
+      
+      else
+        atomType = LeftParen;
+    } // if             // left praen
     
     else if( peek == ')' ) {
-      exp.token = cin.get() ;
+      token.tokenName = cin.get() ;
       gColumn ++ ;
       atomType = RightParen;
-    } // if
+    } // if             // right paren
     
-    else if( peek == '"' ) exp.token = StringProcess( ) ;
+    else if( peek == '"' ) token.tokenName = StringProcess( ) ; // string
     
-    else exp.token = GetAtom();
+    else token.tokenName = GetAtom();              // symbol
     
-    if( exp.token != "" ){
-      exp.typeNum = atomType ;
-      Token.push_back( exp ) ;
-    } // if
+    token.typeNum = atomType ;
+    Tokens.push_back( token ) ;
     
     return true;
     
   } // GetToken()
   
-  bool ReadSExp(){
-    if( GetToken() ){
-      if( IsAtom() ) return true ;
-      else return false;
-    } //if
+  bool IsAtom(){
+    if( Tokens.back().typeNum == Symbol || Tokens.back().typeNum == Int ||
+       Tokens.back().typeNum == Float || Tokens.back().typeNum == String ||
+       Tokens.back().typeNum == Nil || Tokens.back().typeNum == T )
+      return true ;
     
+    else return false ;
+  } // IsAtom()
+  
+  bool SyntaxChecker(){
+    if( IsAtom() ) {
+      cout << "Atom " ;
+      return true ;
+    } // if
+    
+    else if( Tokens.back().typeNum == LeftParen ){
+      cout << "Left " ;
+      if( !GetToken() ) {
+        cout<< "error1" ;
+        return false ;
+      } // if
+
+    
+      while( SyntaxChecker() ) {
+        if( !GetToken() ) {
+          cout<< "error2" ;
+          return false ;
+        } // if
+      } // while
+      
+      if( Tokens.back().typeNum == Dot ){
+        cout << "Dot " ;
+        if( GetToken() ) {
+          if( SyntaxChecker() ) {
+            if( !GetToken() ) {
+              cout<< "error3" ;
+              return false ;
+            } // if
+
+          } // if
+          
+          else {
+            cout<< "error4" ;
+            return false ;
+          } // else
+        } // if
+        
+        else {
+          cout<< "error5" ;
+          return false ;
+        } // else
+      } // if
+      
+      if( Tokens.back().typeNum == RightParen ){
+        cout << "Right " ;
+        return true;
+      } // if
+      
+    } // if
+    
+    
+    else if( Tokens.back().typeNum == Quote ){
+      cout << "Quote " ;
+      if( GetToken() ) {
+        if( SyntaxChecker() ) {
+          if( !GetToken() ) {
+            cout<< "error6" ;
+            return false ;
+          } // if
+        } // if
+        
+        else {
+          cout<< "error7" ;
+          return false ;
+        } // else
+      } // if
+      else {
+        cout<< "error8" ;
+        return false ;
+      } // else
+    } // if
+      
     return false;
     
   } // ReadSExp()
@@ -250,6 +342,7 @@ public:
     else if( errorType == EofError )
       cout << "ERROR (no more input) : END-OF-FILE encountered" << endl;
   } // PrintErrorMessage()
+  
 }; // Class project1
 
 
@@ -257,8 +350,14 @@ int main() {
   cout << "Welcome to OurScheme!" <<"\n" ;
   Project1 class1;
   cout << "> " ;
-  class1.ReadSExp();
-  cout << gColumn << "\t" << gLine <<endl;
+  do {
+    class1.GetToken();
+    cout << endl ;
+    class1.SyntaxChecker();
+    for( int i = 0; i<Tokens.size(); i++) cout << endl << Tokens[i].typeNum <<"\t"<< Tokens[i].tokenName;
+  } while ( !gIsEnd );
+
+  cout << endl << gColumn << "\t" << gLine <<endl;
   
   cout << "\n" << "Thanks for using OurScheme!" << "\n" ;
   return 0;
