@@ -10,11 +10,11 @@ struct  Token {
 }; // TokenType
 
 
-struct  TokenTree {
-  Token * leftToken ;
-  Token * rightToken ;
-  TokenTree * leftBranch = NULL ;
-  TokenTree * rightBranch = NULL ;
+struct TokenTree {
+  Token * leftToken = NULL ;
+  Token * rightToken = NULL;
+  TokenTree * leftNode = NULL ;
+  TokenTree * rightNode = NULL ;
 }; // TokenType
 
 
@@ -27,6 +27,8 @@ enum Error {
 }; // Error
 
 vector<struct Token> Tokens;
+TokenTree * treeRoot = NULL;
+TokenTree * CurrentNode = NULL;
 
 int gLine = 1 ;
 int gColumn = 0 ;
@@ -206,37 +208,40 @@ public:
       return false;
     } // if
     
-    else if( peek == '(' ) {
-      token.tokenName = cin.get() ;
-      gColumn ++ ;
+    else{
       
-      peek = GetChar() ;
-      
-      if( peek == ')'){
-        token.tokenName = "nil" ;
-        cin.get() ;
+      if( peek == '(' ) {
+        token.tokenName = cin.get() ;
         gColumn ++ ;
-        atomType = Nil ;
-      } // if                                                   // () case
+        
+        peek = GetChar() ;
+        
+        if( peek == ')'){
+          token.tokenName = "nil" ;
+          cin.get() ;
+          gColumn ++ ;
+          atomType = Nil ;
+        } // if                                                   // () case
+        
+        else
+          atomType = LeftParen;
+      } // if                                         // left praen
       
-      else
-        atomType = LeftParen;
-    } // if             // left praen
-    
-    else if( peek == ')' ) {
-      token.tokenName = cin.get() ;
-      gColumn ++ ;
-      atomType = RightParen;
-    } // if             // right paren
-    
-    else if( peek == '"' ) token.tokenName = StringProcess( ) ; // string
-    
-    else token.tokenName = GetAtom();              // symbol
-    
-    token.typeNum = atomType ;
-    Tokens.push_back( token ) ;
-    
-    return true;
+      else if( peek == ')' ) {
+        token.tokenName = cin.get() ;
+        gColumn ++ ;
+        atomType = RightParen;
+      } // if             // right paren
+      
+      else if( peek == '"' ) token.tokenName = StringProcess( ) ; // string
+      
+      else token.tokenName = GetAtom();              // symbol
+      
+      token.typeNum = atomType ;
+      Tokens.push_back( token ) ;
+      
+      return true;
+    } // else
     
   } // GetToken()
   
@@ -249,9 +254,35 @@ public:
     else return false ;
   } // IsAtom()
   
+  void InsertAtomToTree(){
+    if( CurrentNode->leftToken == NULL ){
+      CurrentNode->leftToken = new Token;
+      CurrentNode->leftToken->tokenName = Tokens.back().tokenName ;
+      CurrentNode->leftToken->typeNum = Tokens.back().typeNum ;
+    } // if
+    else {
+      CurrentNode->rightToken = new Token;
+      CurrentNode->rightToken->tokenName = Tokens.back().tokenName ;
+      CurrentNode->rightToken->typeNum = Tokens.back().typeNum ;
+    } // else
+  } // InsertAtomToTree
+  
+  void BuildTree() {
+    if( CurrentNode->leftToken == NULL ) {
+      CurrentNode->leftNode = new TokenTree ;
+      CurrentNode = CurrentNode->leftNode ;
+    } // if
+    
+    else {
+      CurrentNode->rightNode = new TokenTree ;
+      CurrentNode = CurrentNode->rightNode ;
+    } // else
+  } // BuildTree
+  
   bool SyntaxChecker(){
     if( IsAtom() ) {
       cout << "Atom " ;
+      InsertAtomToTree();
       return true ;
     } // if
     
@@ -261,6 +292,14 @@ public:
         cout<< "error1" ;
         return false ;
       } // if
+      
+      if( treeRoot == NULL ){
+        treeRoot = new TokenTree ;
+        CurrentNode = treeRoot ;
+      } // if
+      
+      else BuildTree() ;                        // create node
+      
 
     
       while( SyntaxChecker() ) {
@@ -354,6 +393,7 @@ int main() {
     class1.GetToken();
     cout << endl ;
     class1.SyntaxChecker();
+    CurrentNode = treeRoot ;
     for( int i = 0; i<Tokens.size(); i++) cout << endl << Tokens[i].typeNum <<"\t"<< Tokens[i].tokenName;
   } while ( !gIsEnd );
 
