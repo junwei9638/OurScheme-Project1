@@ -99,6 +99,8 @@ public:
       floatLength = int( atomExp.length() - 1 ) - dot ;
       intLength = int( atomExp.length() - 1 ) - floatLength ;
       
+      if( atomExp[0] == '.'  ) atomExp = "0" + atomExp ;
+      
       if( floatLength > 3 ) {
         if( int( atomExp[intLength + 4] ) > 52 ){
           float4 = ( int( atomExp[intLength + 3] ) ) + 1 ;
@@ -183,17 +185,27 @@ public:
   char GetChar( ){
     char peek = '\0' ;
     peek = cin.peek() ;
-    while( peek == ' ' || peek == '\t' || peek == '\n' ) {
-      cin.get() ;
-      gColumn ++ ;
-      peek = cin.peek() ;
-      while( peek == ';' ) {
+    while( peek == ' ' || peek == '\t' || peek == '\n' || peek == ';' ) {
+      if( peek == ';' ) {
         while( peek != '\n' ){
           cin.get() ;
           gColumn ++ ;
           peek = cin.peek() ;
         } // while
-      } // while
+      } // if
+      
+      else if( peek == '\n' ){
+        cin.get() ;
+        gLine++ ;
+        gColumn = 0 ;
+      } //if
+      
+      else if(peek == ' ' || peek == '\t' ) {
+        cin.get() ;
+        gColumn ++ ;
+      } // if
+      
+      peek = cin.peek() ;
     } // while
     
     return peek ;
@@ -202,8 +214,10 @@ public:
   bool GetToken(){
     struct Token token;
     char peek = GetChar() ;
+
     
     if( peek == '\0' ) {
+      cout << "in" ;
       gIsEnd = true ;
       return false;
     } // if
@@ -281,13 +295,17 @@ public:
   
   bool SyntaxChecker(){
     if( IsAtom() ) {
-      cout << "Atom " ;
+      //cout << "Atom " ;
+      if( treeRoot == NULL ){
+        treeRoot = new TokenTree ;
+        CurrentNode = treeRoot ;
+      } // if
       InsertAtomToTree();
       return true ;
     } // if
     
     else if( Tokens.back().typeNum == LeftParen ){
-      cout << "Left " ;
+      //cout << "Left " ;
       if( !GetToken() ) {
         cout<< "error1" ;
         return false ;
@@ -310,7 +328,7 @@ public:
       } // while
       
       if( Tokens.back().typeNum == Dot ){
-        cout << "Dot " ;
+        //cout << "Dot " ;
         if( GetToken() ) {
           if( SyntaxChecker() ) {
             if( !GetToken() ) {
@@ -333,7 +351,7 @@ public:
       } // if
       
       if( Tokens.back().typeNum == RightParen ){
-        cout << "Right " ;
+        //cout << "Right " ;
         return true;
       } // if
       
@@ -341,7 +359,7 @@ public:
     
     
     else if( Tokens.back().typeNum == Quote ){
-      cout << "Quote " ;
+      //cout << "Quote " ;
       if( GetToken() ) {
         if( SyntaxChecker() ) {
           if( !GetToken() ) {
@@ -366,6 +384,21 @@ public:
   } // ReadSExp()
   
   void PrintSExp(){
+    CurrentNode = treeRoot ;
+    while( CurrentNode->leftNode != NULL || CurrentNode->rightNode != NULL  ) {
+      if( CurrentNode->leftToken != NULL ) cout << CurrentNode->leftToken->tokenName << " " ;
+      if ( CurrentNode->rightToken != NULL ) cout << CurrentNode->rightToken->tokenName << " " ;
+      
+      if ( CurrentNode->leftNode != NULL ) CurrentNode = CurrentNode->leftNode ;
+      else if ( CurrentNode->rightNode != NULL ) CurrentNode = CurrentNode->rightNode;
+    } // while
+    
+    if( CurrentNode->leftToken != NULL ) cout << CurrentNode->leftToken->tokenName << " " ;
+    if ( CurrentNode->rightToken != NULL ) {
+      if( CurrentNode->rightToken->tokenName != "nil" )
+        cout << ". " << CurrentNode->rightToken->tokenName << " " ;
+    } // if
+    
   } // PrintSExp()
   
   void PrintErrorMessage( int errorType, string errorToken ) {
@@ -390,11 +423,21 @@ int main() {
   Project1 class1;
   cout << "> " ;
   do {
-    class1.GetToken();
-    cout << endl ;
-    class1.SyntaxChecker();
-    CurrentNode = treeRoot ;
-    for( int i = 0; i<Tokens.size(); i++) cout << endl << Tokens[i].typeNum <<"\t"<< Tokens[i].tokenName;
+    if( class1.GetToken() ) {
+      class1.SyntaxChecker() ;
+      //class1.PrintSExp() ;
+    
+      for( int i = 0; i<Tokens.size(); i++)
+        cout << i << ".  " << Tokens[i].typeNum << "\t" << Tokens[i].tokenName << endl ;
+    
+      cout << gLine << "\t" << gColumn << endl ;
+    } // if
+    
+    else gIsEnd = true;
+    treeRoot = NULL ;
+    Tokens.clear() ;
+    gColumn = 0 ;
+    gLine = 0 ;
   } while ( !gIsEnd );
 
   cout << endl << gColumn << "\t" << gLine <<endl;
