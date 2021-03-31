@@ -27,15 +27,44 @@ enum Error {
   LEFTERROR, RIGHTERROR, CLOSEERROR, EOFERROR, NOERROR
 }; // Error
 
-Token gErrorMsg ;
 vector<Token> gTokens;
 TokenTree * gTreeRoot = NULL;
 TokenTree * gCurrentNode = NULL ;
 
 int gLine = 1 ;
 int gColumn = 0 ;
+
 bool gIsEnd = false;
 int gAtomType ;
+
+string gErrorMsgName = "\0" ;
+int gErrorMsgType = NOERROR ;
+int gErrorLine = 0 ;
+int gErrorColumn = 0 ;
+
+// ------------------Setting Function--------------------- //
+
+void ClearInput() {
+  while ( cin.get() != '\n' ) cin.get() ;
+} // ClearInput()
+
+void SetErrorMsg( int errorType, string errorToken ) {
+  gErrorMsgType = errorType ;
+  gErrorMsgName = errorToken ;
+  gErrorLine = gLine ;
+  gErrorColumn = gColumn ;
+} // SetErrorMsg()
+
+void GlobalVariableReset() {
+  gTreeRoot = NULL ;
+  gTokens.clear() ;
+  gColumn = 0 ;
+  gLine = 1 ;
+  gErrorLine = 0;
+  gErrorColumn = 0;
+} // GlobalVariableReset()
+
+// ------------------Get Token--------------------- //
   
 string StringProcess() {
   string inputString = "\0" ;
@@ -46,7 +75,7 @@ string StringProcess() {
   char peek = cin.peek() ;
   gAtomType = STRING ;
   
-  while ( closeQuote == false ) {
+  while ( closeQuote == false && peek != '\n' ) {
     
     ch = cin.get() ;
     gColumn ++ ;
@@ -81,6 +110,13 @@ string StringProcess() {
     else inputString += ch ;
     
   } // while
+  
+  if ( closeQuote == false ) {
+    cin.get() ;
+    gColumn ++ ;
+    SetErrorMsg( CLOSEERROR, "\"" ) ;
+    return "\0" ;
+  } // if                                        // no closing quote
   
   return inputString ;
 } // StringProcess()
@@ -246,7 +282,10 @@ bool GetToken() {
       gAtomType = RIGHTPAREN;
     } // if             // right paren
     
-    else if ( peek == '"' ) token.tokenName = StringProcess( ) ; // string
+    else if ( peek == '"' ) {
+      token.tokenName = StringProcess() ;
+      if ( token.tokenName == "\0" ) return false ;
+    } // if                                        // string
     
     else token.tokenName = GetAtom();              // symbol
     
@@ -257,6 +296,8 @@ bool GetToken() {
   } // else
   
 } // GetToken()
+
+// ------------------Tree Build--------------------- //
 
 bool IsAtom() {
   if ( gTokens.back().typeNum == SYMBOL || gTokens.back().typeNum == INT ||
@@ -301,7 +342,7 @@ void InsertAtomToTree() {
 
 void BuildTree() {
   
-  while( gCurrentNode->rightNode != NULL ) gCurrentNode = gCurrentNode->backNode ;
+  while ( gCurrentNode->rightNode != NULL ) gCurrentNode = gCurrentNode->backNode ;
   
   if ( gCurrentNode->leftToken == NULL && gCurrentNode->leftNode == NULL ) {
     gCurrentNode->leftNode = new TokenTree ;
@@ -315,14 +356,9 @@ void BuildTree() {
     gCurrentNode->rightNode->backNode = gCurrentNode ;
     gCurrentNode = gCurrentNode->rightNode ;
     InitialNode() ;
-  } // else
+  } // if
 
 } // BuildTree()
-
-void SetErrorMsg( int errorType, string errorToken ) {
-  gErrorMsg.typeNum = errorType ;
-  gErrorMsg.tokenName = errorToken ;
-} // SetErrorMsg()
 
 bool SyntaxChecker() {
   if ( IsAtom() ) {
@@ -340,7 +376,7 @@ bool SyntaxChecker() {
   else if ( gTokens.back().typeNum == LEFTPAREN ) {
     // cout << "Left " ;
     if ( !GetToken() ) {
-      cout << "error1" ;
+      SetErrorMsg( CLOSEERROR, gTokens.back().tokenName ) ;
       return false ;
     } // if
     
@@ -353,10 +389,7 @@ bool SyntaxChecker() {
     else BuildTree() ;                        // create node
     
     while ( SyntaxChecker() ) {
-      if ( !GetToken() ) {
-        cout << "error2" ;
-        return false ;
-      } // if
+      if ( !GetToken() ) return false ;
     } // while
     
     if ( gTokens.back().typeNum == DOT ) {
@@ -364,7 +397,7 @@ bool SyntaxChecker() {
       if ( GetToken() ) {
         if ( SyntaxChecker() ) {
           if ( !GetToken() ) {
-            cout << "error3" ;
+            SetErrorMsg( CLOSEERROR, gTokens.back().tokenName ) ;
             return false ;
           } // if  no token
 
@@ -412,10 +445,13 @@ bool SyntaxChecker() {
     } // else
   } // if
   
-  SetErrorMsg( LEFTERROR, gTokens.back().tokenName ) ;
+  if ( gTokens.back().typeNum != DOT )
+    SetErrorMsg( LEFTERROR, gTokens.back().tokenName ) ;
   return false;
   
 } // SyntaxChecker()
+
+// ------------------Print Function--------------------- //
 
 void PrintSExp() {
   
@@ -423,44 +459,44 @@ void PrintSExp() {
 } // PrintSExp()
 
 
-void PrintErrorMessage( int errorType, string errorToken ) {
-  if ( errorType == LEFTERROR )
+void PrintErrorMessage() {
+  if ( gErrorMsgType == LEFTERROR )
     cout << "ERROR (unexpected token) : atom or '(' expected when token at Line "
-    << gLine << " Column " << gColumn << " is >>" << errorToken << "<< " << endl;
-  else if ( errorType == RIGHTERROR )
+    << gErrorLine << " Column " << gErrorColumn << " is >>" << gErrorMsgName << "<< " << endl;
+  else if ( gErrorMsgType == RIGHTERROR )
     cout << "ERROR (unexpected token) : ')' expected when token at Line "
-    << gLine << " Column " << gColumn << " is >>" << errorToken << "<< " << endl;
-  else if ( errorType == CLOSEERROR )
+    << gErrorLine << " Column " << gErrorColumn << " is >>" << gErrorMsgName << "<< " << endl;
+  else if ( gErrorMsgType == CLOSEERROR )
     cout << "ERROR (no closing quote) : END-OF-LINE encountered at Line "
-    << gLine << " Column " << gColumn << endl;
-  else if ( errorType == EOFERROR )
+    << gErrorLine << " Column " << gErrorColumn << endl;
+  else if ( gErrorMsgType == EOFERROR )
     cout << "ERROR (no more input) : END-OF-FILE encountered" << endl;
 } // PrintErrorMessage()
   
 
+// ------------------Main Function--------------------- //
 
 int main() {
   cout << "Welcome to OurScheme!" << "\n" ;
   cout << "> " ;
   do {
-    SetErrorMsg( NOERROR, "\0" ) ;
     
-    GetToken() ;
-    SyntaxChecker() ;
-    if ( gErrorMsg.typeNum != NOERROR )
-      PrintErrorMessage( gErrorMsg.typeNum, gErrorMsg.tokenName ) ;
+    if ( GetToken() ) SyntaxChecker() ;
+    if ( gErrorMsgType != NOERROR ) {
+      PrintErrorMessage() ;
+      ClearInput() ;
+    } // if
+    
     else
       PrintSExp() ;
-    // for ( int i = 0 ; i < gTokens.size() ; i++ )
-      // cout << i << ".  " << gTokens[i].typeNum << "\t" << gTokens[i].tokenName << endl ;
     
-    gTreeRoot = NULL ;
-    gTokens.clear() ;
-    gColumn = 0 ;
-    gLine = 0 ;
+    for ( int i = 0 ; i < gTokens.size() ; i++ )
+      cout << i << ".  " << gTokens[i].typeNum << "\t" << gTokens[i].tokenName << endl ;
+    cout << endl << gColumn << "\t" << gLine << endl;
+    
+    GlobalVariableReset() ;
   } while ( !gIsEnd );
 
-  cout << endl << gColumn << "\t" << gLine << endl;
   
   cout << "\n" << "Thanks for using OurScheme!" << "\n" ;
   return 0;
