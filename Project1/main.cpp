@@ -351,7 +351,7 @@ void InsertAtomToTree() {
         gCurrentNode->rightToken = new Token ;
         gCurrentNode->rightToken->tokenName = gTokens.back().tokenName ;
         gCurrentNode->rightToken->typeNum = gTokens.back().typeNum ;
-      } // else
+      } // if
     } // if
 
     else if ( gCurrentNode->leftToken != NULL ) {                       // left token !null
@@ -372,10 +372,9 @@ void InsertAtomToTree() {
         gCurrentNode->rightToken = new Token ;
         gCurrentNode->rightToken->tokenName = gTokens.back().tokenName ;
         gCurrentNode->rightToken->typeNum = gTokens.back().typeNum ;
-      } // else
-      
+      } // if
     } // if
-  } // else
+  } // if
 } // InsertAtomToTree()
 
 void BuildTree() {
@@ -402,7 +401,7 @@ void BuildTree() {
         gCurrentNode->rightNode->backNode = gCurrentNode;
         gCurrentNode = gCurrentNode->rightNode ;
         InitialNode();
-      } // else
+      } // if
     } // if
     
     else if ( gCurrentNode->leftToken != NULL ) {         // left token !null
@@ -413,9 +412,7 @@ void BuildTree() {
       gCurrentNode->rightNode->backNode = gCurrentNode;
       gCurrentNode = gCurrentNode->rightNode ;
       InitialNode();
-      
-    } // else
-    
+    } // if
   } // else
   
 
@@ -522,7 +519,7 @@ void PrintErrorMessage() {
 int main() {
   cout << "Welcome to OurScheme!" << endl << endl ;
   int uTestNum = 0 ;
-  //cin >> uTestNum ;
+  // cin >> uTestNum ;
   do {
     cout << "> " ;
     if ( GetToken() ) {
@@ -538,13 +535,13 @@ int main() {
       ClearInput() ;
     } // else
     
-    //if ( !ExitDetect() ) cout << gTokens.back().tokenName << endl << endl;
+    // if ( !ExitDetect() ) cout << gTokens.back().tokenName << endl << endl;
     
       
-      for ( int i = 0 ; i < gTokens.size() ; i++ ) {
-        cout << i << ".  " << gTokens[i].typeNum << "\t" << gTokens[i].tokenName << endl  ;
-        // cout << "(" << gColumn << " , " << gLine << ")" << endl;
-      } // for
+    for ( int i = 0 ; i < gTokens.size() ; i++ ) {
+      cout << i << ".  " << gTokens[i].typeNum << "\t" << gTokens[i].tokenName << endl  ;
+      // cout << "(" << gColumn << " , " << gLine << ")" << endl;
+    } // for
       
     
     // cout << "(" << gColumn << " , " << gLine << ")" << endl;
