@@ -43,7 +43,7 @@ int gLine = 0 ;
 int gColumn = 0 ;
 
 bool gIsEnd = false;
-int gAtomType ;
+int gAtomType = 0 ;
 
 string gErrorMsgName = "\0" ;
 int gErrorMsgType = NOERROR ;
@@ -53,23 +53,33 @@ int gErrorColumn = 0 ;
 // ------------------Setting Function--------------------- //
 
 void ClearInput() {
-  while ( cin.get() != '\n' ) cin.get() ;
+  char peek = cin.peek() ;
+  while ( peek != '\n' && peek != EOF ) {
+    cin.get();
+    peek = cin.peek() ;
+  } // while
+  
+  if ( peek == '\n' ) cin.get() ;
 } // ClearInput()
 
-void SetErrorMsg( int errorType, string errorToken ) {
+void SetErrorMsg( int errorType, string errorToken, int line, int column ) {
   gErrorMsgType = errorType ;
   gErrorMsgName = errorToken ;
-  gErrorLine = gLine ;
-  gErrorColumn = gColumn ;
+  gErrorLine = line ;
+  gErrorColumn = column ;
 } // SetErrorMsg()
 
 void GlobalVariableReset() {
   gTreeRoot = NULL ;
+  gCurrentNode = NULL ;
   gTokens.clear() ;
   gColumn = 0 ;
   gLine = 1 ;
   gErrorLine = 0;
   gErrorColumn = 0;
+  gErrorMsgType = NOERROR ;
+  gErrorMsgName = "\0" ;
+  gAtomType = 0 ;
 } // GlobalVariableReset()
 
 bool ExitDetect() {
@@ -141,11 +151,13 @@ string StringProcess() {
     
   } // while
   
+  if ( peek == '\n' ) cin.get() ;
+  
   if ( closeQuote == false ) {
     if ( peek != EOF )
       cin.get() ;
     gColumn ++ ;
-    SetErrorMsg( CLOSEERROR, "\"" ) ;
+    SetErrorMsg( CLOSEERROR, "\"", gLine, gColumn ) ;
     return "\0" ;
   } // if                                        // no closing quote
   
@@ -240,13 +252,15 @@ string GetAtom( ) {
   char peek = cin.peek() ;
   while ( peek != '\n' &&
           peek != ' ' && peek != ';' &&
-          peek != '(' && peek != ')' && peek != '"' &&
+          peek != '(' && peek != ')' &&
           peek != '\0' && peek != EOF ) {
     ch = cin.get() ;
     gColumn ++ ;
     atomExp = atomExp + ch;
     peek = cin.peek() ;
   } // while
+  
+  if ( peek == '\n' ) cin.get() ;
   
   atomExp = AtomAnalyze( atomExp );
   
@@ -323,7 +337,14 @@ bool GetToken() {
       if ( token.tokenName == "\0" ) return false ;
     } // if                                        // string
     
-    else token.tokenName = GetAtom();              // symbol
+    else {
+      token.tokenName = GetAtom();                // symbol
+      int notSymbol = ( int ) token.tokenName.find( '"' );
+      if ( notSymbol != token.tokenName.npos ) {
+        SetErrorMsg( CLOSEERROR, "\"", 0, 0 ) ;
+        return false ;
+      } // if
+    } // else
     
     token.typeNum = gAtomType ;
     gTokens.push_back( token ) ;
@@ -460,7 +481,7 @@ bool SyntaxChecker() {
   else if ( gTokens.back().typeNum == LEFTPAREN ) {
     // cout << "Left " ;
     if ( !GetToken() ) {
-      SetErrorMsg( CLOSEERROR, gTokens.back().tokenName ) ;
+      SetErrorMsg( CLOSEERROR, gTokens.back().tokenName, gLine, gColumn  ) ;
       return false ;
     } // if
     
@@ -468,7 +489,7 @@ bool SyntaxChecker() {
     
     while ( SyntaxChecker() ) {
       if ( !GetToken() ) {
-        SetErrorMsg( CLOSEERROR, gTokens.back().tokenName ) ;
+        SetErrorMsg( CLOSEERROR, gTokens.back().tokenName, gLine, gColumn  ) ;
         return false ;
       } // if
     } // while
@@ -480,19 +501,19 @@ bool SyntaxChecker() {
       if ( GetToken() ) {
         if ( SyntaxChecker() ) {
           if ( !GetToken() ) {
-            SetErrorMsg( CLOSEERROR, gTokens.back().tokenName ) ;
+            SetErrorMsg( CLOSEERROR, gTokens.back().tokenName, gLine, gColumn  ) ;
             return false ;
           } // if  no token
         } // if  syntax checker
         
         else {
-          SetErrorMsg( LEFTERROR, gTokens.back().tokenName ) ;
+          SetErrorMsg( LEFTERROR, gTokens.back().tokenName, gLine, gColumn  ) ;
           return false ;
         } // else
       } // if
       
       else {
-        SetErrorMsg( CLOSEERROR, gTokens.back().tokenName ) ;
+        SetErrorMsg( CLOSEERROR, gTokens.back().tokenName, gLine, gColumn  ) ;
         return false ;
       } // else
     } // if
@@ -502,7 +523,7 @@ bool SyntaxChecker() {
       return true;
     } // if
     else {
-      SetErrorMsg( RIGHTERROR, gTokens.back().tokenName ) ;
+      SetErrorMsg( RIGHTERROR, gTokens.back().tokenName, gLine, gColumn  ) ;
       return false;
     } // else
     
@@ -513,23 +534,23 @@ bool SyntaxChecker() {
     if ( GetToken() ) {
       if ( SyntaxChecker() ) return true ;
       else {
-        SetErrorMsg( LEFTERROR, gTokens.back().tokenName ) ;
+        SetErrorMsg( LEFTERROR, gTokens.back().tokenName, gLine, gColumn  ) ;
         return false ;
       } // else
     } // if
     
     else {
-      SetErrorMsg( LEFTERROR, gTokens.back().tokenName ) ;
+      SetErrorMsg( LEFTERROR, gTokens.back().tokenName, gLine, gColumn  ) ;
       return false ;
     } // else
   } // if
   
   if ( gTokens.size() > 2 ) {
     if ( !IsAtom( gTokens[gTokens.size()-2].typeNum ) && gTokens[gTokens.size()-2].typeNum != RIGHTPAREN )
-      SetErrorMsg( LEFTERROR, gTokens.back().tokenName ) ;
+      SetErrorMsg( LEFTERROR, gTokens.back().tokenName, gLine, gColumn  ) ;
   } // if
   
-  else SetErrorMsg( LEFTERROR, gTokens.back().tokenName ) ;
+  else SetErrorMsg( LEFTERROR, gTokens.back().tokenName, gLine, gColumn  ) ;
   return false ;
   
 } // SyntaxChecker()
@@ -618,13 +639,13 @@ void PrintSExp() {
 void PrintErrorMessage() {
   if ( gErrorMsgType == LEFTERROR )
     cout << "ERROR (unexpected token) : atom or '(' expected when token at Line "
-    << gErrorLine << " Column " << gErrorColumn << " is >>" << gErrorMsgName << "<< " << endl;
+    << gErrorLine << " Column " << gErrorColumn << " is >>" << gErrorMsgName << "<< " << endl << endl;
   else if ( gErrorMsgType == RIGHTERROR )
     cout << "ERROR (unexpected token) : ')' expected when token at Line "
-    << gErrorLine << " Column " << gErrorColumn << " is >>" << gErrorMsgName << "<< " << endl;
+    << gErrorLine << " Column " << gErrorColumn << " is >>" << gErrorMsgName << "<< " << endl << endl;
   else if ( gErrorMsgType == CLOSEERROR )
     cout << "ERROR (no closing quote) : END-OF-LINE encountered at Line "
-    << gErrorLine << " Column " << gErrorColumn << endl;
+    << gErrorLine << " Column " << gErrorColumn << endl << endl;
   else if ( gErrorMsgType == EOFERROR )
     cout << "ERROR (no more input) : END-OF-FILE encountered" ;
 } // PrintErrorMessage()
@@ -647,8 +668,11 @@ int main() {
     } // if
     
     else {
-      if ( gErrorMsgType == NOERROR )
-        SetErrorMsg( EOFERROR, " " ) ;
+      if ( gErrorMsgType == NOERROR ) {
+        SetErrorMsg( EOFERROR, " ", gLine, gColumn  ) ;
+        gIsEnd = true ;
+      } // if
+      
       PrintErrorMessage() ;
     } // else
     
