@@ -116,16 +116,18 @@ void GlobalVariableReset() {
 
 bool ExitDetect() {
   int exit = -1 ;
+  int nilExit = -1 ;
+  int exitNil = -1 ;
   string tokenString = "\0" ;
   
-  for ( int i = 0 ; i < gTokens.size() ; i++ ) {
-    if ( gTokens[i].typeNum != NIL && gTokens[i].typeNum != DOT )
-      tokenString += gTokens[i].tokenName ;
-  } // for
+  for ( int i = 0 ; i < gTokens.size() ; i++ )
+    tokenString += gTokens[i].tokenName ;
   
   exit = ( int ) tokenString.find( "(exit)" ) ;
+  nilExit = ( int ) tokenString.find( "(nil.exit)" ) ;
+  exitNil = ( int ) tokenString.find( "(exit.nil)" ) ;
   
-  if ( exit != -1 ) {
+  if ( exit != -1 || nilExit != -1 || exitNil != -1 ) {
     gIsEnd = true ;
     return true ;
   } // if
@@ -736,8 +738,7 @@ void PrintErrorMessage() {
 int main() {
   cout << "Welcome to OurScheme!" << endl << endl ;
   char uTestNum = '\0' ;
-  while ( uTestNum != '\n' )  {
-    if ( uTestNum == '2' ) cout << "hehe" ;
+  while ( uTestNum != '\n' )  { 
     uTestNum = cin.get();
   } // while
   
