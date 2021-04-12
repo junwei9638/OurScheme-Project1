@@ -329,6 +329,10 @@ bool GetToken() {
   Token token;
   char peek = GetChar() ;
 
+  token.tokenName = "\0"  ;
+  token.typeNum = 0  ;
+  token.tokenColumn = 0 ;
+  token.tokenLine = 0 ;
   
   if ( peek == '\0' || peek == EOF ) {
     gIsEnd = true ;
@@ -366,9 +370,9 @@ bool GetToken() {
     } // if             // right paren
     
     else if ( peek == '"' ) {
-      token.tokenName = StringProcess() ;
-      token.tokenColumn = gColumn ;
+      token.tokenColumn = gColumn + 1 ;
       token.tokenLine = gLine ;
+      token.tokenName = StringProcess() ;
       if ( token.tokenName == "\0" ) return false ;
     } // if                                        // string
     
@@ -429,7 +433,7 @@ void InsertAtomToTree() {
       
       else if ( gCurrentNode->leftNode != NULL ) {                        // left node !null
         while ( gCurrentNode->rightNode != NULL )                         // find right node null
-          gCurrentNode = gCurrentNode->backNode ;                 
+          gCurrentNode = gCurrentNode->backNode ;
         
         if ( gTokens[gTokens.size()-2].typeNum != DOT ) {                 // if !dot-> create right node
           gCurrentNode->rightNode = new TokenTree ;                       // and insert to left token
@@ -554,6 +558,7 @@ bool SyntaxChecker() {
         return false ;
       } // if
     }  // if
+    else return false ;
     
     while ( SyntaxChecker() ) {
       if ( !GetToken() ) {
@@ -739,14 +744,16 @@ int main() {
   do {
     cout << "> " ;
     if ( GetToken() ) {
-      if ( SyntaxChecker() && !ExitDetect() ) {
-        // cout << "(" << gColumn << " , " << gLine << ")" << endl;
-        PrintSExp() ;
-        ClearSpaceAndOneLine() ;
+      if ( SyntaxChecker() ) {
+        cout << "(" << gTokens.back().tokenLine << " , " << gTokens.back().tokenColumn << ")" << endl;
+        if ( !ExitDetect() ) {
+          PrintSExp() ;
+          ClearSpaceAndOneLine() ;
+        } //
       } // if
       
       else {
-        // cout << "(" << gLine << " , " << gColumn << ")" << endl;
+        cout << "(" << gTokens.back().tokenLine << " , " << gTokens.back().tokenColumn << ")" << endl;
         PrintErrorMessage() ;
         ClearInput() ;
         InitialLineColumn() ;
@@ -759,8 +766,9 @@ int main() {
         gIsEnd = true ;
       } // if
       
-      // cout << "(" << gColumn << " , " << gLine << ")" << endl;
+      cout << "(" << gTokens.back().tokenLine << " , " << gTokens.back().tokenColumn << ")" << endl;
       PrintErrorMessage() ;
+      ClearInput() ;
       InitialLineColumn() ;
     } // else
     
