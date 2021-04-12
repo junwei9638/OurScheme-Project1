@@ -72,12 +72,13 @@ void ClearSpaceAndOneLine() {               // read space and "ONE" Line
   } // if
   
   if ( peek == ';' ) {                     // comment case
-    while ( peek != '\n' ) {
+    while ( peek != '\n' || peek != EOF ) {
       cin.get() ;
       peek = cin.peek() ;
     } // while
     
-    cin.get() ;
+    if ( peek == '\n' )
+      cin.get() ;
     InitialLineColumn() ;                  // get endl
   } // if
 
@@ -749,7 +750,7 @@ int main() {
         if ( !ExitDetect() ) {
           PrintSExp() ;
           ClearSpaceAndOneLine() ;
-        } //
+        } // if
       } // if
       
       else {
@@ -766,7 +767,8 @@ int main() {
         gIsEnd = true ;
       } // if
       
-      cout << "(" << gTokens.back().tokenLine << " , " << gTokens.back().tokenColumn << ")" << endl;
+      if ( gTokens.size() > 0 )
+        cout << "(" << gTokens.back().tokenLine << " , " << gTokens.back().tokenColumn << ")" << endl;
       PrintErrorMessage() ;
       ClearInput() ;
       InitialLineColumn() ;
