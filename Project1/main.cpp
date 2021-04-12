@@ -72,7 +72,7 @@ void ClearSpaceAndOneLine() {               // read space and "ONE" Line
   } // if
   
   if ( peek == ';' ) {                     // comment case
-    while ( peek != '\n' || peek != EOF ) {
+    while ( peek != '\n' && peek != EOF ) {
       cin.get() ;
       peek = cin.peek() ;
     } // while
@@ -352,9 +352,6 @@ bool GetToken() {
       if ( peek == ')' ) {
         token.tokenName = "nil" ;
         cin.get() ;
-        token.tokenColumn = gColumn ;
-        token.tokenLine = gLine ;
-        gColumn ++ ;
         gAtomType = NIL ;
       } // if                                                   // () case
       
