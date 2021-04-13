@@ -32,7 +32,7 @@ enum Type {
 }; // Type
 
 enum Error {
-  LEFT_ERROR, RIGHT_ERROR, CLOSE_ERROR, EOF_ERROR, NO_ERROR
+  LEFT_ERROR, RIGHT_ERROR, CLOSE_ERROR, EOF_ERROR, NO_ERROR, NOT_S_EXP
 }; // Error
 
 vector<Token> gTokens;
@@ -95,12 +95,10 @@ void ClearInput() {
 } // ClearInput()
 
 void SetErrorMsg( int errorType, string errorToken, int line, int column ) {
-  if ( gErrorMsgType == NO_ERROR ) {
-    gErrorMsgType = errorType ;
-    gErrorMsgName = errorToken ;
-    gErrorLine = line ;
-    gErrorColumn = column ;
-  } // if
+  gErrorMsgType = errorType ;
+  gErrorMsgName = errorToken ;
+  gErrorLine = line ;
+  gErrorColumn = column ;
 } // SetErrorMsg()
 
 void GlobalVariableReset() {
@@ -159,24 +157,28 @@ string StringProcess() {
     if ( ch == '\\' && peek == '\\' ) {              // double slash
       cin.get();
       gColumn ++ ;
+      peek = cin.peek() ;
       inputString += '\\' ;
     } // if
     
     else if ( ch == '\\' && peek == 'n' ) {           // \n case
       cin.get() ;
       gColumn ++ ;
+      peek = cin.peek() ;
       inputString += '\n' ;
     } // if
     
     else if ( ch == '\\' && peek == 't' ) {          // \t case
       cin.get() ;
       gColumn ++ ;
+      peek = cin.peek() ;
       inputString += '\t' ;
     } // if
     
     else if ( ch == '\\' && peek == '"' ) {          // \" case
       cin.get() ;
       gColumn ++ ;
+      peek = cin.peek() ;
       inputString += '"' ;
     } // if
     
@@ -338,7 +340,8 @@ bool GetToken() {
   token.tokenColumn = 0 ;
   token.tokenLine = 0 ;
   
-  if ( peek == '\0' || peek == EOF ) {
+  if ( peek == EOF ) {
+    SetErrorMsg( EOF_ERROR, " ", 0, 0  ) ;
     gIsEnd = true ;
     return false;
   } // if
@@ -549,59 +552,56 @@ bool SyntaxChecker() {
     
     BuildTree() ;                                                 // // create node
 
-    if ( !GetToken() ) {
-      SetErrorMsg( EOF_ERROR, gTokens.back().tokenName, 0, 0  ) ;
-      return false ;
-    } // if
+    if ( !GetToken() ) return false ;
     
     if ( SyntaxChecker() ) {
-      if ( !GetToken() ) {
-        SetErrorMsg( EOF_ERROR, gTokens.back().tokenName, 0, 0  ) ;
-        return false ;
-      } // if
-    }  // if
-    else return false ;
-    
-    while ( SyntaxChecker() ) {
-      if ( !GetToken() ) {
-        SetErrorMsg( EOF_ERROR, gTokens.back().tokenName, 0, 0  ) ;
-        return false ;
-      } // if
-    } // while
-    
-    if ( gErrorMsgType == LEFT_ERROR || gErrorMsgType == RIGHT_ERROR ) return false;
-    
-    if ( gTokens.back().typeNum == DOT ) {
-      // cout << "Dot " ;
-      if ( GetToken() ) {
-        if ( SyntaxChecker() ) {
-          if ( !GetToken() ) {
-            SetErrorMsg( EOF_ERROR, gTokens.back().tokenName, 0, 0  ) ;
-            return false ;
-          } // if  no token
-        } // if  syntax checker
+      if ( !GetToken() ) return false ;
+      
+      while ( SyntaxChecker() ) {
+        if ( !GetToken() ) return false ;
+      } // while
+      
+      if ( gErrorMsgType != NOT_S_EXP ) return false;
+      
+      if ( gTokens.back().typeNum == DOT ) {
+        // cout << "Dot " ;
+        if ( GetToken() ) {
+          if ( SyntaxChecker() ) {
+            if ( !GetToken() ) return false ;
+          } // if  syntax checker
+          
+          else {
+            if ( gErrorMsgType == NOT_S_EXP ) {
+              SetErrorMsg( LEFT_ERROR, gTokens.back().tokenName,
+                           gTokens.back().tokenLine, gTokens.back().tokenColumn  ) ;
+            } // if
+            
+            return false;
+            
+          } // else
+        } // if: GetToken()
         
-        else {
-          SetErrorMsg( LEFT_ERROR, gTokens.back().tokenName,
-                       gTokens.back().tokenLine, gTokens.back().tokenColumn  ) ;
-          return false ;
-        } // else
+        else return false ;
       } // if
       
+      if ( gTokens.back().typeNum == RIGHTPAREN ) {
+        gCurrentNode = gCurrentNode->backNode ;
+        return true;
+      } // if
       else {
-        SetErrorMsg( EOF_ERROR, gTokens.back().tokenName, 0, 0  ) ;
-        return false ;
+        SetErrorMsg( RIGHT_ERROR, gTokens.back().tokenName,
+                     gTokens.back().tokenLine, gTokens.back().tokenColumn  ) ;
+        return false;
       } // else
     } // if
     
-    if ( gTokens.back().typeNum == RIGHTPAREN ) {
-      gCurrentNode = gCurrentNode->backNode ;
-      return true;
-    } // if
     else {
-      SetErrorMsg( RIGHT_ERROR, gTokens.back().tokenName,
-                   gTokens.back().tokenLine, gTokens.back().tokenColumn  ) ;
-      return false;
+      if ( gErrorMsgType == NOT_S_EXP ) {
+        SetErrorMsg( LEFT_ERROR, gTokens.back().tokenName,
+                     gTokens.back().tokenLine, gTokens.back().tokenColumn  ) ;
+      } // if
+      
+      return false ;
     } // else
     
   } // if
@@ -617,27 +617,18 @@ bool SyntaxChecker() {
       } // else
     } // if
     
-    else {
-      SetErrorMsg( EOF_ERROR, gTokens.back().tokenName, 0, 0  ) ;
-      return false ;
-    } // else
+    else return false ;
   } // if
   
-  if ( gTokens.size() > 2 ) {
-    if ( !IsAtom( gTokens[gTokens.size()-2].typeNum ) && gTokens[gTokens.size()-2].typeNum != RIGHTPAREN )
-      SetErrorMsg( LEFT_ERROR, gTokens.back().tokenName, gTokens.back().tokenLine,
-                   gTokens.back().tokenColumn ) ;
-  } // if
-  
-  else SetErrorMsg( LEFT_ERROR, gTokens.back().tokenName, gTokens.back().tokenLine,
-                    gTokens.back().tokenColumn ) ;
+  SetErrorMsg( NOT_S_EXP, gTokens.back().tokenName,
+               gTokens.back().tokenLine, gTokens.back().tokenColumn ) ;
   return false ;
   
 } // SyntaxChecker()
 
 // ------------------Print Function--------------------- //
 
-bool NeedPrint( int i ) {
+bool NeedPrint( int i, int printParenNum ) {
   if ( i > 0 ) {
     if ( gTokens[i].typeNum == LEFTPAREN && gTokens[i-1].typeNum == DOT )       // . ( case
       return false ;
@@ -649,6 +640,14 @@ bool NeedPrint( int i ) {
     
     else if ( gTokens[i].typeNum == NIL && gTokens[i-1].typeNum == DOT )         // atom . Nil case
       return false ;
+    
+    else if ( gTokens[i].typeNum == NIL && gTokens[i-1].typeNum == DOT )         // atom . Nil case
+      return false ;
+    
+    else if ( gTokens[i].typeNum == RIGHTPAREN ) {
+      if ( printParenNum > 1 ) return true;
+      else return false ;
+    } // if
 
   
   } // if
@@ -670,7 +669,7 @@ void PrintSExp() {
   for ( int i = 0 ; i < gTokens.size() ; i++ ) {
     if ( gTokens.size() == 1 ) cout << gTokens.back().tokenName << endl;
     else {
-      if ( NeedPrint( i ) ) {
+      if ( NeedPrint( i, printParenNum ) ) {
         
         if ( gTokens[i].typeNum == RIGHTPAREN ) printParenNum -- ;
         
@@ -694,8 +693,7 @@ void PrintSExp() {
         } // if
         
         else if ( gTokens[i].typeNum == RIGHTPAREN ) {
-          if ( printParenNum >= 0 )
-            cout << gTokens[i].tokenName << endl ;
+          cout << gTokens[i].tokenName << endl ;
           lineReturn = true ;
         } // if
         
@@ -712,6 +710,14 @@ void PrintSExp() {
         
       } // if
     } // else
+    
+    if ( i == ( gTokens.size()-1 ) && printParenNum > 0 ) {
+      while ( printParenNum > 0 ) {
+        printParenNum -- ;
+        PrintSpace( printParenNum ) ;
+        cout << ")" << endl;
+      } // while
+    } // if
   } // for
   
   cout << endl;
@@ -719,7 +725,7 @@ void PrintSExp() {
 
 
 void PrintErrorMessage() {
-  if ( gErrorMsgType == LEFT_ERROR )
+  if ( gErrorMsgType == LEFT_ERROR ||  gErrorMsgType == NOT_S_EXP )
     cout << "ERROR (unexpected token) : atom or '(' expected when token at Line "
     << gErrorLine << " Column " << gErrorColumn << " is >>" << gErrorMsgName << "<<" << endl << endl;
   else if ( gErrorMsgType == RIGHT_ERROR )
@@ -763,13 +769,8 @@ int main() {
     } // if
     
     else {
-      if ( gErrorMsgType == NO_ERROR ) {
-        SetErrorMsg( EOF_ERROR, " ", 0, 0  ) ;
-        gIsEnd = true ;
-      } // if
-      
       // if ( gTokens.size() > 0 )
-        // cout << "(" << gTokens.back().tokenLine << " , " << gTokens.back().tokenColumn << ")" << endl;
+      // cout << "(" << gTokens.back().tokenLine << " , " << gTokens.back().tokenColumn << ")" << endl;
       PrintErrorMessage() ;
       ClearInput() ;
       InitialLineColumn() ;
