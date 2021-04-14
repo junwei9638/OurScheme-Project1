@@ -7,6 +7,7 @@
 # include <iomanip>
 # include <string>
 # include <vector>
+# include <sstream>
 
 using namespace std;
 
@@ -113,7 +114,7 @@ void GlobalVariableReset() {
 } // GlobalVariableReset()
 
 bool ExitDetect() {
-  int exit = -1 ;
+
   int nilExit = -1 ;
   int exitNil = -1 ;
   string tokenString = "\0" ;
@@ -121,11 +122,10 @@ bool ExitDetect() {
   for ( int i = 0 ; i < gTokens.size() ; i++ )
     tokenString += gTokens[i].tokenName ;
   
-  exit = ( int ) tokenString.find( "(exit)" ) ;
   nilExit = ( int ) tokenString.find( "(nil.exit)" ) ;
   exitNil = ( int ) tokenString.find( "(exit.nil)" ) ;
   
-  if ( exit != -1 || nilExit != -1 || exitNil != -1 ) {
+  if ( tokenString == "(exit)" || nilExit != -1 || exitNil != -1 ) {
     gIsEnd = true ;
     return true ;
   } // if
@@ -200,35 +200,13 @@ string StringProcess() {
 } // StringProcess()
 
 string NumProcess( string atomExp ) {
-  int floatLength = 0 ;
-  int intLength = 0 ;
-  int float4 = 0 ;
+  
   if ( atomExp[0] == '+' ) atomExp = atomExp.substr( 1, atomExp.length() - 1 ) ;  // '+' case
   if ( atomExp[0] == '.'  ) atomExp = "0" + atomExp ;                             // .xxx case
   if ( atomExp[0] == '-' && atomExp[1] == '.' ) atomExp.insert( 1, "0" ) ;        // -.xxx case
   
   int dot = ( int ) atomExp.find( '.' );
-  if ( dot != atomExp.npos ) {
-    gAtomType = FLOAT ;
-    floatLength = ( int ) ( atomExp.length() - 1 ) - dot ;
-    intLength = ( int ) ( atomExp.length() - 1 ) - floatLength ;
-    
-    if ( floatLength > 3 ) {
-      if ( ( int ) ( atomExp[intLength + 4] ) > 52 ) {
-        float4 = ( ( int ) ( atomExp[intLength + 3] ) ) + 1 ;
-        atomExp = atomExp.substr( 0, dot + 3 ) + ( char ) float4 ;
-      } // if
-      
-      else atomExp = atomExp.substr( 0, dot + 4 ) ;                // 四捨五入
-    } // if                                                        // float > 3
-    
-    else if ( floatLength < 3 ) {
-      for ( int i = 0 ; i < ( 3 - floatLength ) ; i++ )
-        atomExp = atomExp + "0" ;
-    } // if                                                        // float < 3
-  } // if                                                          // float case
-  
-  
+  if ( dot != atomExp.npos ) gAtomType = FLOAT ;
   else gAtomType = INT ;
   return atomExp ;
 } // NumProcess()
@@ -306,7 +284,7 @@ char GetChar( ) {
   peek = cin.peek() ;
   while ( peek == ' ' || peek == '\t' || peek == '\n' || peek == ';'  ) {
     if ( peek == ';' ) {
-      while ( peek != '\n' ) {
+      while ( peek != '\n' && peek != EOF ) {
         cin.get() ;
         gColumn ++ ;
         peek = cin.peek() ;
@@ -608,8 +586,23 @@ bool SyntaxChecker() {
   
   else if ( gTokens.back().typeNum == QUOTE ) {
     // cout << "Quote " ;
+    Token temp ;
+    gTokens.pop_back() ;
+    temp.tokenName = "(" ;
+    temp.typeNum = LEFTPAREN ;
+    gTokens.push_back( temp ) ;
+    temp.tokenName = "quote" ;
+    temp.typeNum = QUOTE ;
+    gTokens.push_back( temp ) ;
+
+    
     if ( GetToken() ) {
-      if ( SyntaxChecker() ) return true ;
+      if ( SyntaxChecker() ) {
+        temp.tokenName = ")" ;
+        temp.typeNum = RIGHTPAREN ;
+        gTokens.push_back( temp ) ;
+        return true ;
+      } // if :push right paren
       else {
         SetErrorMsg( LEFT_ERROR, gTokens.back().tokenName,
                      gTokens.back().tokenLine, gTokens.back().tokenColumn  ) ;
@@ -627,6 +620,14 @@ bool SyntaxChecker() {
 } // SyntaxChecker()
 
 // ------------------Print Function--------------------- //
+
+void PrintAtom( int i ) {
+  if ( gTokens[i].typeNum == FLOAT ) {
+    cout << fixed << setprecision( 3 )
+         << round( atof( gTokens[i].tokenName.c_str() ) * 1000 ) / 1000 << endl ;
+  } // if
+  else cout << gTokens[i].tokenName << endl  ;
+} // PrintAtom()
 
 bool NeedPrint( int i, int printParenNum ) {
   if ( i > 0 ) {
@@ -667,7 +668,8 @@ void PrintSExp() {
   bool lineReturn = false ;
   
   for ( int i = 0 ; i < gTokens.size() ; i++ ) {
-    if ( gTokens.size() == 1 ) cout << gTokens.back().tokenName << endl;
+    if ( gTokens.size() == 1 ) PrintAtom( i ) ;
+
     else {
       if ( NeedPrint( i, printParenNum ) ) {
         
@@ -679,11 +681,7 @@ void PrintSExp() {
         } // if
         
         if ( gTokens[i].typeNum == QUOTE ) {
-          cout << "( quote" << endl ;
-          temp.tokenName = ")" ;
-          temp.typeNum = RIGHTPAREN ;
-          gTokens.push_back( temp ) ;
-          printParenNum ++ ;
+          cout << gTokens[i].tokenName << endl ;
           lineReturn = true ;
         } // if
         
@@ -704,7 +702,7 @@ void PrintSExp() {
         
         
         else if ( IsAtom( gTokens[i].typeNum ) ) {
-          cout << gTokens[i].tokenName << endl  ;
+          PrintAtom( i ) ;
           lineReturn = true ;
         } // if
         
@@ -782,7 +780,7 @@ int main() {
   } while ( !gIsEnd );
 
   
-  cout << endl << "Thanks for using OurScheme!" << "\n" ;
+  cout << endl << "Thanks for using OurScheme!" << endl ;
   return 0;
   
 } // main()
