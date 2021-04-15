@@ -33,7 +33,7 @@ enum Type {
 }; // Type
 
 enum Error {
-  LEFT_ERROR, RIGHT_ERROR, CLOSE_ERROR, EOF_ERROR, NO_ERROR, NOT_S_EXP
+  LEFT_ERROR, RIGHT_ERROR, CLOSE_ERROR, EOF_ERROR, NO_ERROR, NOT_S_EXP_ERROR
 }; // Error
 
 vector<Token> gTokens;
@@ -78,8 +78,7 @@ void ClearSpaceAndOneLine() {               // read space and "ONE" Line
       peek = cin.peek() ;
     } // while
     
-    if ( peek == '\n' )
-      cin.get() ;
+    if ( peek == '\n' ) cin.get() ;
     InitialLineColumn() ;                  // get endl
   } // if
 
@@ -106,7 +105,7 @@ void GlobalVariableReset() {
   gTreeRoot = NULL ;
   gCurrentNode = NULL ;
   gTokens.clear() ;
-  gErrorLine = 0;
+  gErrorLine = 1;
   gErrorColumn = 0;
   gErrorMsgType = NO_ERROR ;
   gErrorMsgName = "\0" ;
@@ -267,7 +266,8 @@ string GetAtom( ) {
           peek != ' ' && peek != ';' &&
           peek != '(' && peek != ')' &&
           peek != '\0' && peek != EOF &&
-          peek !=  '\'' ) {
+          peek !=  '\'' && peek !=  '\t' &&
+          peek !=  '\r' ) {
     ch = cin.get() ;
     gColumn ++ ;
     atomExp = atomExp + ch;
@@ -539,7 +539,7 @@ bool SyntaxChecker() {
         if ( !GetToken() ) return false ;
       } // while
       
-      if ( gErrorMsgType != NOT_S_EXP ) return false;
+      if ( gErrorMsgType != NOT_S_EXP_ERROR ) return false;
       
       if ( gTokens.back().typeNum == DOT ) {
         // cout << "Dot " ;
@@ -549,7 +549,7 @@ bool SyntaxChecker() {
           } // if  syntax checker
           
           else {
-            if ( gErrorMsgType == NOT_S_EXP ) {
+            if ( gErrorMsgType == NOT_S_EXP_ERROR ) {
               SetErrorMsg( LEFT_ERROR, gTokens.back().tokenName,
                            gTokens.back().tokenLine, gTokens.back().tokenColumn  ) ;
             } // if
@@ -574,7 +574,7 @@ bool SyntaxChecker() {
     } // if
     
     else {
-      if ( gErrorMsgType == NOT_S_EXP ) {
+      if ( gErrorMsgType == NOT_S_EXP_ERROR ) {
         SetErrorMsg( LEFT_ERROR, gTokens.back().tokenName,
                      gTokens.back().tokenLine, gTokens.back().tokenColumn  ) ;
       } // if
@@ -613,7 +613,7 @@ bool SyntaxChecker() {
     else return false ;
   } // if
   
-  SetErrorMsg( NOT_S_EXP, gTokens.back().tokenName,
+  SetErrorMsg( NOT_S_EXP_ERROR, gTokens.back().tokenName,
                gTokens.back().tokenLine, gTokens.back().tokenColumn ) ;
   return false ;
   
@@ -723,7 +723,7 @@ void PrintSExp() {
 
 
 void PrintErrorMessage() {
-  if ( gErrorMsgType == LEFT_ERROR ||  gErrorMsgType == NOT_S_EXP )
+  if ( gErrorMsgType == LEFT_ERROR ||  gErrorMsgType == NOT_S_EXP_ERROR )
     cout << "ERROR (unexpected token) : atom or '(' expected when token at Line "
     << gErrorLine << " Column " << gErrorColumn << " is >>" << gErrorMsgName << "<<" << endl << endl;
   else if ( gErrorMsgType == RIGHT_ERROR )
@@ -751,7 +751,6 @@ int main() {
     cout << "> " ;
     if ( GetToken() ) {
       if ( SyntaxChecker() ) {
-        // cout << "(" << gTokens.back().tokenLine << " , " << gTokens.back().tokenColumn << ")" << endl;
         if ( !ExitDetect() ) {
           PrintSExp() ;
           ClearSpaceAndOneLine() ;
@@ -759,7 +758,6 @@ int main() {
       } // if
       
       else {
-        // cout << "(" << gTokens.back().tokenLine << " , " << gTokens.back().tokenColumn << ")" << endl;
         PrintErrorMessage() ;
         ClearInput() ;
         InitialLineColumn() ;
@@ -767,14 +765,10 @@ int main() {
     } // if
     
     else {
-      // if ( gTokens.size() > 0 )
-      // cout << "(" << gTokens.back().tokenLine << " , " << gTokens.back().tokenColumn << ")" << endl;
       PrintErrorMessage() ;
       ClearInput() ;
       InitialLineColumn() ;
     } // else
-    
-    
     
     GlobalVariableReset() ;
   } while ( !gIsEnd );
