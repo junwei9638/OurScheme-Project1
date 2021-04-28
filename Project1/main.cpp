@@ -187,11 +187,10 @@ string StringProcess() {
   
   
   if ( closeQuote == false ) {
-    gColumn ++ ;
     if ( peek == EOF )
       SetErrorMsg( EOF_ERROR, "\"", 0, 0 ) ;
     else if ( peek == '\n' )
-      SetErrorMsg( CLOSE_ERROR, "\"", gLine, gColumn ) ;
+      SetErrorMsg( CLOSE_ERROR, "\"", gLine, gColumn+1 ) ;
     return "\0" ;
   } // if                                        // no closing quote
   
